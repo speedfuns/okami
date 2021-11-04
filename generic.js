@@ -166,4 +166,4 @@ const bingoList = [
   ],
 ]
 
-$(function() { srl.bingo(bingoList, 5) })
+$(function() { srl.bingo(bingoList, 5); })

@@ -10,10 +10,14 @@
   font-weight: 400;
   src: local('Merriweather'), url(http://themes.googleusercontent.com/static/fonts/merriweather/v4/RFda8w1V0eDZheqfcyQ4EHhCUOGz7vYGh680lGh-uXM.woff) format('woff');
 }
+@font-face {
+  font-family: 'AstralsOkami';
+  src: local('../assets/AstralsOkami-Regular.otf');
+}
 
 #bingo img {
-    max-width:  95px; 
-    max-height: 70px;  
+    max-width:  95px;
+    max-height: 70px;
     display: block;
     margin: auto;
 }
