@@ -13,7 +13,7 @@ Should scrap:
 - deliver a vase to the orochi guardian statue
 
 Should add:
--  bloom 10 cursed patches (iffy on the number, could be 5 or 7?)
+- bloom 10 cursed patches (iffy on the number, could be 5 or 7?)
 - deliver the acorn to sleepy
 - deliver the beehive to sleepy
 - deliver inaba to the animal lover
@@ -46,4 +46,3 @@ Should add:
 - make five snow statues in kamui
 - race tobi three times
 - fish everywhere it is possible to fish at least once (benkei in sei-an counts as one despite his location change)
-
