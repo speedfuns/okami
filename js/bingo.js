@@ -12,64 +12,78 @@ const parseSearchParams = () => {
   const searchParams = new URLSearchParams(location.search)
   return {
     lang: searchParams.get('lang') || 'name',
-    seed: searchParams.get('seed') || '',
+    seed: parseInt(searchParams.get('seed'), 10),
     mode: searchParams.get('mode'),
   }
 }
 
+/**
+ * @param {string} mode
+ * @returns {string}
+ */
 const getCardType = mode =>
   isInArray(mode, ['short', 'long']) ? capitalise(mode) : 'Normal'
 
+/**
+ * Generates indices for feeding into the tables for generating the magic square.
+ * Note that each element in the returned array is mathematically independent.
+ * @param {number} seedSlice  A slice of the original seed. For example, we use the top
+ *                            and bottom three digits as `seedSlice` on individual calls
+ *                            to this function
+ * @returns {number[]}
+ */
+const generateIndicesForRange = seedSlice => [
+  seedSlice % 2,
+  seedSlice % 3,
+  ~~((seedSlice % 8) / 2),
+  seedSlice % 5,
+]
+
+/**
+ * remT is horizontal shift to put any diagonal on the main diagonal.
+ * Splits `seed` into bottom and top three digits and gets a number within [0, 8] each.
+ * Then we calculate to get a number in [0, 64], before... chopping things off to get
+ * [0, 4] later??? Man I don't know..
+ * @param {number} seed
+ * @return {number}
+ */
+const calculateRemT = seed => ~~((seed % 1e3) / 120) * 8 + ~~(seed / 120e3)
+
+/**
+ * Creates an array of integers [1...N] in a random (and uniform) order, where N is the
+ * size of the passed-in array. The elements of the array are the indices that determine
+ * the order of the range.
+ * @param {number[]} randomisedIndexSeq
+ */
+const createRandomisedRange = randomisedIndexSeq =>
+  randomisedIndexSeq.reduce(
+    (acc, rem, i) => {
+      acc.splice(rem, 0, i + 1)
+      return acc
+    },
+    [0],
+  )
+
 const calculateDifficulty = (i, mode, seed) => {
   // To create the magic square we need 2 random orderings of the numbers 0, 1, 2, 3, 4.
-  // The following creates those orderings and calls them Table5 and Table1
+  // The following creates those orderings and calls them table5 and table1
 
-  let Num3 = seed % 1000 // Table5 will use the ones, tens, and hundreds digits.
+  // table5 will use the ones, tens, and hundreds digits.
+  const table5 = createRandomisedRange(generateIndicesForRange(sed % 1000))
+  // table1 will use the next 3 digits.
+  const table1 = createRandomisedRange(generateIndicesForRange(~~(seed / 1000)))
+  const remT = calculateRemT(seed)
 
-  let Rem8 = Num3 % 8
-  let Rem4 = Math.floor(Rem8 / 2)
-  let Rem2 = Rem8 % 2
-  let Rem5 = Num3 % 5
-  let Rem3 = Num3 % 3 // Note that Rem2, Rem3, Rem4, and Rem5 are mathematically independent.
-  let RemT = Math.floor(Num3 / 120) // This is between 0 and 8
-
-  // The idea is to begin with an array containing a single number, 0.
-  // Each number 1 through 4 is added in a random spot in the array's current size.
-  // The result - the numbers 0 to 4 are in the array in a random (and uniform) order.
-  const Table5 = [0]
-  Table5.splice(Rem2, 0, 1)
-  Table5.splice(Rem3, 0, 2)
-  Table5.splice(Rem4, 0, 3)
-  Table5.splice(Rem5, 0, 4)
-
-  Num3 = Math.floor(seed / 1000) // Table1 will use the next 3 digits.
-  Num3 = Num3 % 1000
-
-  Rem8 = Num3 % 8
-  Rem4 = Math.floor(Rem8 / 2)
-  Rem2 = Rem8 % 2
-  Rem5 = Num3 % 5
-  Rem3 = Num3 % 3
-  RemT = RemT * 8 + Math.floor(Num3 / 120) // This is between 0 and 64.
-
-  const Table1 = [0]
-  Table1.splice(Rem2, 0, 1)
-  Table1.splice(Rem3, 0, 2)
-  Table1.splice(Rem4, 0, 3)
-  Table1.splice(Rem5, 0, 4)
-
-  i--
-  RemT = RemT % 5 //  Between 0 and 4, fairly uniformly.
-  x = (i + RemT) % 5 //  RemT is horizontal shift to put any diagonal on the main diagonal.
+  x = (--i + remT) % 5
   y = Math.floor(i / 5)
 
   // The Tables are set into a single magic square template
   // Some are the same up to some rotation, reflection, or row permutation.
   // However, all genuinely different magic squares can arise in this fashion.
-  const e5 = Table5[(x + 3 * y) % 5]
-  const e1 = Table1[(3 * x + y) % 5]
+  const e5 = table5[(x + 3 * y) % 5]
+  const e1 = table1[(3 * x + y) % 5]
 
-  // Table5 controls the 5* part and Table1 controls the 1* part.
+  // table5 controls the 5* part and table1 controls the 1* part.
   const baseValue = 5 * e5 + e1
 
   switch (mode) {
@@ -106,11 +120,20 @@ const calculateSynergyForLine = (lineCheckList, index, typesA, bingoBoard) =>
       }, 0)
     : 0
 
+/**
+ * @param {object} bingoList
+ * @param {number} difficulty
+ * @returns {number}
+ */
 const calculateRng = (bingoList, difficulty) =>
   ~~(bingoList[difficulty].length * Math.random())
 
-const populateBingoBoardOnPage = bingoBoard => {
-  bingoBoard.forEach((entry, i) => {
+/**
+ * Adds the chosen challenges onto the bingo board.
+ * @param {object[]} chosenChallenges The challenges chosen based on the seed
+ */
+const populateBingoBoardOnPage = chosenChallenges => {
+  chosenChallenges.forEach((entry, i) => {
     $(`#slot${i + 1}`).append(entry.name)
     //$(`#slot${i}`).append(`<br/>${entry.types.toString()}`)
     //$(`#slot${i}`).append(`<br/>${entry.synergy}`)
@@ -145,14 +168,19 @@ const LINE_CHECK_LIST = [
   [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4],
 ]
 
-const addHighlightClassesToBingoRow = elementString => {
-  $(`#${elementString}`).hover(
-    () => $(`.${elementString}`).addClass('hover'),
-    () => $(`.${elementString}`).removeClass('hover'),
+/**
+ * Adds CSS classes to each square in the board including the headers such that, when you
+ * hover over a header, the entire corresponding row gets highlighted.
+ * @param {string} headerId Just the string, without the '#'. I.e. just 'row1', and **not** '#row1'
+ */
+const addHighlightClassesToBingoRow = headerId => {
+  $(`#${headerId}`).hover(
+    () => $(`.${headerId}`).addClass('hover'),
+    () => $(`.${headerId}`).removeClass('hover'),
   )
 }
 
-const ROW_QUERY_STRING_NAMES = it(5)
+const ROW_HEADER_IDS = it(5)
   .reduce((acc, i) => acc.concat([`row${i + 1}`, `col${i + 1}`]), [])
   .concat(['tlbr', 'bltr'])
 
@@ -197,7 +225,7 @@ const makeSquaresCycleGreenRedBlank = () => {
 
 const mirror = i => i + 2 * (2 - i)
 
-const createBingoBoard = (bingoList, lang, mode, seed) => {
+const generateChallenges = (bingoList, lang, mode, seed) => {
   // The board itself stored as an array first
   // Array with objects that store the difficulty in order 0-24
   const bingoBoard = createBingoBoardArray(mode, seed)
@@ -246,22 +274,22 @@ const addBingoDetailsToPage = (mode, seed) => {
 const bingo = bingoList => {
   const { lang, seed, mode } = parseSearchParams()
 
-  if (seed.length === 0) return reseedPage(mode)
+  if (isNaN(seed)) return reseedPage(mode)
 
-  Math.seedrandom(seed) //sets up the RNG
+  Math.seedrandom(seed.toString()) // sets up the RNG. `seed` needs to be a string
 
   addBingoDetailsToPage(mode, seed)
   createPopoutsOnClickRowHeaders(mode)
   makeSquaresCycleGreenRedBlank()
-  ROW_QUERY_STRING_NAMES.map(addHighlightClassesToBingoRow)
-  populateBingoBoardOnPage(createBingoBoard(bingoList, lang, mode, seed))
+  ROW_HEADER_IDS.map(addHighlightClassesToBingoRow)
+  populateBingoBoardOnPage(generateChallenges(bingoList, lang, mode, seed))
 
   return true
 } // setup
 
 const reseedPage = mode => {
-  const qSeed = '?seed=' + Math.ceil(999999 * Math.random())
-  const qMode = mode == 'short' || mode == 'long' ? `&mode=${mode}` : ''
+  const qSeed = '?seed=' + ~~(1e6 * Math.random())
+  const qMode = isInArray(mode, ['short', 'long']) ? '&mode=' + mode : ''
   location = qSeed + qMode
   return false
 }
