@@ -29,6 +29,7 @@ This is about 90% done; I just need to do what's in, well, [To Do](#to-do).
 
 - Read through the CSS files to understand their places in life
 - Fix `calculateChallengeSimilarity` cuz that shit ain't actually being utilised at all
+- Fix issue where a cell can be empty
 
 ## Resources
 
