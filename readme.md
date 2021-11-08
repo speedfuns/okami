@@ -1,19 +1,42 @@
-# Ōkami
+# Ōkami Bingo Board
 
-Okami Bingo stuffs
+This is a fork of the [original project](https://github.com/Lyriati/okami-1/tree/gh-pages) by Lyriati and rekyuu.
 
-Everything in this repo is a work in progress!
+This is about 90% done; I just need to do what's in, well, [To Do](#to-do).
 
-`okami/tables/generic.js` Goals sheet 
+## Project Structure
 
-`bingo-popout.html` fixed popouts - rekyuu
+- `assets/`
+    - `Astralsokami-Regular.otf` Font file that mimics the in-game font. Thanks, Astral 🌞👑
+- `css/`
+    - `bingo.css` TODO: Learn what this is for
+    - `style.css` TODO: Learn what this is for
+- `js/`
+    - `bingo.js` Populates the bingo board with challenges from reading the current seed and game mode.
+    - `jquery.min.js` Minified [jQuery](https://jquery.com/) library.
+    - `popout.js` Creates popouts when clicking on the row headers on the board (e.g. "ROW1").
+    - `seedrandom-min.js` Minified [seedrandom](https://github.com/davidbau/seedrandom) script.
+- `tables/`
+    - `generic.js` The challenge pool, which `js/bingo.js` reads from.
+- `bingo-popout.html` Markup for popouts.
+- `favicon.png` Site icon.
+- `challenges.csv` The source for bingo challenges.
+- `goalslist.txt` The original source for challenges. Unused now.
+- `index.html` Main markup file. This is where you can see the markup for the bingo page.
+- `readme.md` The very file you're looking at right now.
+
+## To Do
+
+- Read through the CSS files to understand their places in life
+- Fix `calculateChallengeSimilarity` cuz that shit ain't actually being utilised at all
 
 ## Resources
 
-[Okami Leaderboard](https://www.speedrun.com/Okami)  
+[Okami Leaderboard](https://www.speedrun.com/Okami)
 [Okami Speedrunning Discord](https://discord.gg/AQNKmMu)
 
-## Contributers
+## Contributors
 
-[Lyriati](https://www.twitch.tv/lyriati)  
-[rekyuu](https://www.twitch.tv/rekyuus)
+* [Lyriati](https://www.twitch.tv/lyriati)
+* [rekyuu](https://www.twitch.tv/rekyuus)
+* And [me :^)](https://www.github.com/zysim)

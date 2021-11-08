@@ -1,5 +1,17 @@
+// This file is used for building the bingo board. We assume a size of five here.
+// It fills the HTML with the challenge names, and also gives the ability to cycle
+// through a challenge cell's Done, Failed, and Default stages by clicking on it.
+// Shouldn't be too hard to expand upon it to hold any arbitrary size (I hope).
+// The only thing that's stopping it from being flexible with dimensions is how it
+// calculates the similarity of the selected challenges. It uses a `LINE_CHECK_LIST`
+// that seems like it would need to be changed too accommodate different board
+// sizes.
+
+import { getPopoutOptions, openPopout } from './popout.js'
+
+/// Typedefs
 /**
- * The details of a selected challenge for the bingo board.
+ * The details of a selected challenge, to be added to the the bingo board page.
  * @typedef {Object} ChallengeDataHtml
  * @property {number} difficulty The alleged difficulty of the challenge.
  * @property {string} name The name of the challenge. This is what you see on-screen.
@@ -8,19 +20,7 @@
  *                               calculating it in `calculateChallengeSimilarity`.
  * @property {string[]} cats The category/categories this challenge belongs to.
  */
-
-/**
- * Options to be passed into `openPopout`.
- * @see openPopout
- * @typedef {Object} PopoutOptions
- * @property {string} html The HTML file to load for this popout
- * @property {string} name The name of the row header. E.g. "ROW1"
- * @property {string} items The descriptions of the challenges in the chosen row joined
- *                          together in a single string and separated by ";;;". Don't
- *                          ask me why; I'm just refactoring this for funsies
- * @property {number} width The width of the popout
- * @property {number} height The height of the popout
- */
+///
 
 const capitalise = string =>
   string
@@ -29,6 +29,40 @@ const capitalise = string =>
     .join('')
 
 const isInArray = (needle, haystack) => haystack.indexOf(needle) > -1
+
+/**
+ * Used in calculating the similarity of a prospective challenge with already-chosen
+ * ones. Frankly I think the algo is a little flawed; e.g. the first couple indices
+ * here don't even get used.
+ * @type {number[][]}
+ */
+const LINE_CHECK_LIST = [
+  [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24],
+  [0, 2, 3, 4, 6, 11, 16, 21],
+  [0, 1, 3, 4, 7, 12, 17, 22],
+  [0, 1, 2, 4, 8, 13, 18, 23],
+  [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24],
+  [0, 10, 15, 20, 6, 7, 8, 9],
+  [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21],
+  [5, 6, 8, 9, 2, 12, 17, 22],
+  [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23],
+  [4, 14, 19, 24, 8, 7, 6, 5],
+  [0, 5, 15, 20, 11, 12, 13, 14],
+  [1, 6, 16, 21, 10, 12, 13, 14],
+  [0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14],
+  [3, 8, 18, 23, 10, 11, 12, 14],
+  [4, 9, 19, 24, 10, 11, 12, 13],
+  [0, 5, 10, 20, 16, 17, 18, 19],
+  [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4],
+  [15, 16, 18, 19, 2, 7, 12, 22],
+  [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0],
+  [4, 9, 14, 24, 15, 16, 17, 18],
+  [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24],
+  [20, 22, 23, 24, 1, 6, 11, 16],
+  [2, 7, 12, 17, 20, 21, 23, 24],
+  [20, 21, 22, 24, 3, 8, 13, 18],
+  [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4],
+]
 
 /**
  * Makes an array of size `size`, with values that are its indices. For
@@ -82,9 +116,9 @@ const calculateShifts = (i, seed) => ({
 const splitSeed = seed => [~~(seed / 1e3), seed % 1e3]
 
 /**
- * Generates indices for feeding into the tables for generating the magic square.
- * Note that each element in the returned array is mathematically independent.
- * @param {number} seedSlice  A slice of the original seed. For example, we use the top
+ * Generates indices for feeding into the tables for generating the magic square. Note
+ * that each element in the returned array is mathematically independent.
+ * @param {number} seedSlice  A slice of the original seed. For example, we pass the top
  *                            and bottom three digits as `seedSlice` on individual calls
  *                            to this function
  * @returns {number[]}
@@ -183,6 +217,9 @@ const createDifficulties = (mode, seed) =>
   }))
 
 /**
+ * TODO: This isn't even being used; `selectedChallenges` only has `difficulty`, and no
+ * `cats` property at all. Figure out how to fix this.
+ *
  * Calculates how similar a prospective challenge is to the challenges that have been
  * selected so far. This first loops through the already-chosen challenges, at indices
  * decided by `LINE_CHECK_LIST` (??? Why tho?), then loops through the categories of the
@@ -203,50 +240,23 @@ const calculateChallengeSimilarity = (
   selectedChallenges,
 ) =>
   prospectiveCats != null
-    ? LINE_CHECK_LIST[index].reduce((synergy, toCheckIndex) => {
+    ? LINE_CHECK_LIST[index].reduce((similarity, toCheckIndex) => {
         const { cats: catsB } = selectedChallenges[toCheckIndex] || {}
-        if (catsB == null) return synergy
+        if (catsB == null) return similarity
         // TODO: This can be split into main and subcats. Then compare the two separately
         prospectiveCats.forEach((a, k) => {
           catsB.forEach((b, l) => {
+            console.log({a, b, k, l})
             if (a == b) {
-              synergy++ // match increased
-              if (!k) synergy++ // main cat increased
-              if (!l) synergy++ // main cat increased
+              similarity++ // match increased
+              if (!k) similarity++ // main cat increased
+              if (!l) similarity++ // main cat increased
             }
           })
         })
-        return synergy
+        return similarity
       }, 0)
     : 0
-
-const LINE_CHECK_LIST = [
-  [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24],
-  [0, 2, 3, 4, 6, 11, 16, 21],
-  [0, 1, 3, 4, 7, 12, 17, 22],
-  [0, 1, 2, 4, 8, 13, 18, 23],
-  [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24],
-  [0, 10, 15, 20, 6, 7, 8, 9],
-  [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21],
-  [5, 6, 8, 9, 2, 12, 17, 22],
-  [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23],
-  [4, 14, 19, 24, 8, 7, 6, 5],
-  [0, 5, 15, 20, 11, 12, 13, 14],
-  [1, 6, 16, 21, 10, 12, 13, 14],
-  [0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14],
-  [3, 8, 18, 23, 10, 11, 12, 14],
-  [4, 9, 19, 24, 10, 11, 12, 13],
-  [0, 5, 10, 20, 16, 17, 18, 19],
-  [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4],
-  [15, 16, 18, 19, 2, 7, 12, 22],
-  [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0],
-  [4, 9, 14, 24, 15, 16, 17, 18],
-  [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24],
-  [20, 22, 23, 24, 1, 6, 11, 16],
-  [2, 7, 12, 17, 20, 21, 23, 24],
-  [20, 21, 22, 24, 3, 8, 13, 18],
-  [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4],
-]
 
 /**
  * Adds CSS classes to each square in the board including the headers such that, when you
@@ -268,66 +278,7 @@ const ROW_HEADER_IDS = it(5)
   .concat(['tlbr', 'bltr'])
 
 /**
- * Takes the descriptions of all entries on the row that the user wants to create a
- * popout of and adds them to a single string. This will be a part of the popout's URL.
- * @param {string} rowId  The ID of the row header, e.g. "row1". This is also a class
- *                        name of the corresponding items.
- * @returns {string}
- */
-const stringifyRowForPopout = rowId =>
-  Array.from($(`#bingo .${rowId}`))
-    .map(el => encodeURIComponent($(el).html()))
-    .join(';;;')
-
-/**
- * Opens a popout of a single row from the bingo board.
- * @param {PopoutOptions} opt
- */
-const openPopout = opt => {
-  open(
-    `${opt.html}#${opt.name}=${opt.items}`,
-    '_blank',
-    // A ton of these options default to "no" or don't exist in the MDN docs. I'm not sure if the same defaults are true in other browsers too; can't care about that right now.
-    `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${opt.width}, height=${opt.height}`,
-  )
-}
-
-const popoutStaticDefaultOpts = {
-  html: './bingo-popout.html',
-  width: 220,
-  height: 460,
-}
-
-const popoutStaticOpts = {
-  'simple-stream': {
-    html: './bingo-popout-basic.html',
-    width: 420,
-    height: 180,
-  },
-}
-
-/**
- * Gets all options to be passed into `openPopout`.
- * There are two kinds of options:
- * - **Dynamic** options are taken from the row header's jQuery wrapper. The header's
- * name and ID are used in the popout's URL.
- * - **Static** options are taken from the current bingo's mode. These are used to set
- * the popout's markup and dimensions.
- * @see openPopout
- * @see popoutStaticDefaultOpts
- * @see popoutStaticOpts
- * @see stringifyRowForPopout
- * @param {Object} jQueryEl
- * @param {string} mode
- * @returns {PopoutOptions}
- */
-const getPopoutOptions = (jQueryEl, mode) => ({
-  name: jQueryEl.html(),
-  items: stringifyRowForPopout(jQueryEl.attr('id')),
-  ...(popoutStaticOpts[mode] || popoutStaticDefaultOpts),
-})
-
-/**
+ * Creates the popouts when the user clicks on the row headers.
  * @param {string} mode
  */
 const createPopoutsOnClickRowHeaders = mode => {
@@ -376,7 +327,7 @@ const chooseChallengeInGroup = (pool, i, incumbentChallenges) =>
       const prospective = selectChallengeFromGroup(group, j)
       return {
         ...prospective,
-        synergy: calculateChallengeSimilarity(
+        similarity: calculateChallengeSimilarity(
           i,
           prospective.cats,
           incumbentChallenges,
@@ -385,7 +336,9 @@ const chooseChallengeInGroup = (pool, i, incumbentChallenges) =>
     })
     .reduce(
       (acc, prospective) =>
-        acc == null || prospective.synergy < acc.synergy ? prospective : acc,
+        acc == null || prospective.similarity < acc.similarity
+          ? prospective
+          : acc,
       null,
     )
 
@@ -405,19 +358,20 @@ const chooseChallenges = (pool, mode, seed) =>
  * Adds the chosen challenges onto the bingo board.
  * @param {ChallengeDataHtml[]} chosenChallenges The challenges chosen based on the seed
  */
- const populateBingoBoardOnPage = chosenChallenges => {
+const populateBingoBoardOnPage = chosenChallenges => {
   chosenChallenges.forEach((c, i) => {
     // $(`#slot${i + 1}`).append(c.name)
-    $(`#slot${i}`).append(`<br/>${c.types.toString()}`)
-    // $(`#slot${i}`).append(`<br/>${c.synergy}`)
+    $(`#slot${i}`).append(`<br/>${c.cats.toString()}`)
+    $(`#slot${i}`).append(`<br/>${c.similarity}`)
   })
 }
 
 /**
+ * Writes the details of the current bingo at the bottom of the board on the page.
  * @param {string} mode
- * @param {string} seed
+ * @param {number} seed
  */
-const addBingoDetailsToPage = (mode, seed) => {
+const writeFooter = (mode, seed) => {
   $('#results').append(
     '<p>SRT Bingo <strong>v1</strong>&emsp;Seed: <strong>' +
       seed +
@@ -427,6 +381,10 @@ const addBingoDetailsToPage = (mode, seed) => {
   )
 }
 
+/**
+ * Creates the bingo. This is the "main" function that starts it all.
+ * @param {ChallengePool} challengePool
+ */
 const bingo = challengePool => {
   const { seed, mode = 'normal' } = getDetailsForBingo()
 
@@ -434,15 +392,18 @@ const bingo = challengePool => {
 
   Math.seedrandom(seed.toString()) // sets up the RNG. `seed` needs to be a string
 
-  addBingoDetailsToPage(mode, seed)
+  writeFooter(mode, seed)
   createPopoutsOnClickRowHeaders(mode)
   makeSquaresCycleGreenRedBlank()
   ROW_HEADER_IDS.map(addHighlightClassesToBingoRow)
   populateBingoBoardOnPage(chooseChallenges(challengePool, mode, seed))
 
   return true
-} // setup
+}
 
+/**
+ * @param {string} mode
+ */
 const reseedPage = mode => {
   const qSeed = '?seed=' + ~~(1e6 * Math.random())
   const qMode = isInArray(mode, ['short', 'long']) ? '&mode=' + mode : ''
@@ -450,5 +411,4 @@ const reseedPage = mode => {
   return false
 }
 
-// Backwards Compatibility
-const srl = { bingo }
+export default { bingo }
