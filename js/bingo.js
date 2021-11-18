@@ -9,6 +9,37 @@
 
 import { getPopoutOptions, openPopout } from './popout.js'
 
+const lineCheckList = [
+  [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24],
+  [0, 2, 3, 4, 6, 11, 16, 21],
+  [0, 1, 3, 4, 7, 12, 17, 22],
+  [0, 1, 2, 4, 8, 13, 18, 23],
+  [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24],
+
+  [0, 10, 15, 20, 6, 7, 8, 9],
+  [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21],
+  [5, 6, 8, 9, 2, 12, 17, 22],
+  [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23],
+  [4, 14, 19, 24, 8, 7, 6, 5],
+  [0, 5, 15, 20, 11, 12, 13, 14],
+  [1, 6, 16, 21, 10, 12, 13, 14],
+  [0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14],
+  [3, 8, 18, 23, 10, 11, 12, 14],
+  [4, 9, 19, 24, 10, 11, 12, 13],
+
+  [0, 5, 10, 20, 16, 17, 18, 19],
+  [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4],
+  [15, 16, 18, 19, 2, 7, 12, 22],
+  [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0],
+  [4, 9, 14, 24, 15, 16, 17, 18],
+
+  [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24],
+  [20, 22, 23, 24, 1, 6, 11, 16],
+  [2, 7, 12, 17, 20, 21, 23, 24],
+  [20, 21, 22, 24, 3, 8, 13, 18],
+  [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4],
+]
+
 var bingo = function (challengePool, size) {
   function gup(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]')
@@ -48,44 +79,6 @@ var bingo = function (challengePool, size) {
       cardtype +
       '</strong></p>',
   )
-
-  var noTypeCount = 0
-
-  var lineCheckList = []
-
-  if (size == 5) {
-    lineCheckList[0] = [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24]
-    lineCheckList[1] = [0, 2, 3, 4, 6, 11, 16, 21]
-    lineCheckList[2] = [0, 1, 3, 4, 7, 12, 17, 22]
-    lineCheckList[3] = [0, 1, 2, 4, 8, 13, 18, 23]
-    lineCheckList[4] = [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24]
-
-    lineCheckList[5] = [0, 10, 15, 20, 6, 7, 8, 9]
-    lineCheckList[6] = [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21]
-    lineCheckList[7] = [5, 6, 8, 9, 2, 12, 17, 22]
-    lineCheckList[8] = [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23]
-    lineCheckList[9] = [4, 14, 19, 24, 8, 7, 6, 5]
-
-    lineCheckList[10] = [0, 5, 15, 20, 11, 12, 13, 14]
-    lineCheckList[11] = [1, 6, 16, 21, 10, 12, 13, 14]
-    lineCheckList[12] = [
-      0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14,
-    ]
-    lineCheckList[13] = [3, 8, 18, 23, 10, 11, 12, 14]
-    lineCheckList[14] = [4, 9, 19, 24, 10, 11, 12, 13]
-
-    lineCheckList[15] = [0, 5, 10, 20, 16, 17, 18, 19]
-    lineCheckList[16] = [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4]
-    lineCheckList[17] = [15, 16, 18, 19, 2, 7, 12, 22]
-    lineCheckList[18] = [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0]
-    lineCheckList[19] = [4, 9, 14, 24, 15, 16, 17, 18]
-
-    lineCheckList[20] = [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24]
-    lineCheckList[21] = [20, 22, 23, 24, 1, 6, 11, 16]
-    lineCheckList[22] = [2, 7, 12, 17, 20, 21, 23, 24]
-    lineCheckList[23] = [20, 21, 22, 24, 3, 8, 13, 18]
-    lineCheckList[24] = [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4]
-  }
 
   $('.popout').click(function () {
     var mode = null
@@ -299,81 +292,85 @@ var bingo = function (challengePool, size) {
     return value
   }
 
-  function calculateSimilarity(i, typesA) {
-    var synergy = 0
-    if (typeof typesA != 'undefined') {
-      for (var j = 0; j < lineCheckList[i].length; j++) {
-        var typesB = bingoBoard[lineCheckList[i][j]].types
-        if (typeof typesB != 'undefined') {
-          for (var k = 0; k < typesA.length; k++) {
-            for (var l = 0; l < typesB.length; l++) {
-              if (typesA[k] == typesB[l]) {
-                synergy++ // if match increase
-                if (k == 0) {
-                  synergy++
-                } // if main type increase
-                if (l == 0) {
-                  synergy++
-                } // if main type increase
-              }
+  const difficulties = [] //the board itself stored as an array first
+  for (let i = 0; i < 25; i++) {
+    // array with objects that store the difficulty in order 0-24
+    difficulties[i] = { difficulty: getDifficulty(i) }
+  }
+
+  /**
+   * Location of getRng call affects its result. Like yes, even if you call this as a
+   * parameter, or assign it first to a variable before passing _that_ in, the value's
+   * different.
+   */
+
+  //populate the bingo board in the array
+  printChallengesOnBoard(getChallenges(difficulties, challengePool))
+
+  return true
+} // setup
+
+const calculateSimilarity = (i, typesA, selectedChallenges) => {
+  let similarity = 0
+  if (typesA != null) {
+    for (let j = 0; j < lineCheckList[i].length; j++) {
+      let typesB = selectedChallenges[lineCheckList[i][j]].types
+      if (typesB != null) {
+        for (let k = 0; k < typesA.length; k++) {
+          for (let l = 0; l < typesB.length; l++) {
+            if (typesA[k] == typesB[l]) {
+              similarity++ // if match increase
+              if (k == 0) {
+                similarity++
+              } // if main type increase
+              if (l == 0) {
+                similarity++
+              } // if main type increase
             }
           }
         }
       }
     }
-    return synergy
   }
+  return similarity
+}
 
-  var bingoBoard = [] //the board itself stored as an array first
-  for (let i = 0; i < 25; i++) {
-    // array with objects that store the difficulty in order 0-24
-    bingoBoard[i] = { difficulty: getDifficulty(i) }
-  }
+const getRng = challengeGroup => ~~(challengeGroup.length * Math.random())
 
-  const minimiseSimilarity = (challengePool, difficulty, RNG) => {
-    let synergy = 0
-    let currentObj = null
-    let minSynObj = null
-
-    for (let i = 0; i < challengePool[difficulty].length; i++) {
-      currentObj =
-        challengePool[difficulty][(i + RNG) % challengePool[difficulty].length]
-      synergy = calculateSimilarity(i, currentObj.types)
-      if (minSynObj == null || synergy < minSynObj.synergy) {
-        if (minSynObj != null) {
-          console.table({
-            currentSynergy: minSynObj.synergy,
-            lowerSynergy: synergy,
-          })
-        }
-        minSynObj = { synergy, value: currentObj }
+const minimiseSimilarity = (challengeGroup, selectedChallenges) =>
+  // Loop break taken from https://stackoverflow.com/questions/36144406/how-to-early-break-reduce-method/47441371#47441371
+  challengeGroup.reduce((acc, _, i, group) => {
+    const { name, types } = group[(i + getRng(challengeGroup)) % group.length]
+    const similarity = calculateSimilarity(i, types, selectedChallenges)
+    if (acc == null || similarity < acc.similarity) {
+      if (acc != null) {
+        console.table({
+          currentSimilarity: acc.similarity,
+          lowerSimilarity: similarity,
+        })
       }
-      if (!synergy) {
-        break
-      }
+      acc = { name, similarity, types }
     }
+    if (!similarity) {
+      group.splice(1)
+    }
+    return acc
+  }, null)
 
-    return minSynObj
-  }
+const getChallenges = (difficulties, challengePool) =>
+  difficulties.reduce((acc, { difficulty }, i) => {
+    const { name, types } = minimiseSimilarity(challengePool[difficulty], acc)
 
-  //populate the bingo board in the array
-  bingoBoard.forEach((_, i, board) => {
-    var getDifficulty = board[i].difficulty // difficulty of current square
-    var RNG = Math.floor(challengePool[getDifficulty].length * Math.random())
-    if (RNG == challengePool[getDifficulty].length) {
-      RNG--
-    } //fix a miracle
+    acc[i].name = name
+    acc[i].types = types
 
-    const minSynObj = minimiseSimilarity(challengePool, getDifficulty, RNG)
+    return acc
+  }, difficulties.slice(0))
 
-    board[i].types = minSynObj.value.types
-    board[i].name = minSynObj.value[LANG] || minSynObj.value.name
-    board[i].synergy = minSynObj.synergy
-    $('#slot' + (i + 1)).append(bingoBoard[i].name)
+const printChallengesOnBoard = challenges =>
+  challenges.forEach(({ name }, i) => {
+    $('#slot' + (i + 1)).append(name)
   })
-
-  return true
-} // setup
 
 function reseedPage(mode) {
   var qSeed = '?seed=' + Math.ceil(999999 * Math.random())
