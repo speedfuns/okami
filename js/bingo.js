@@ -9,286 +9,108 @@
 
 import { getPopoutOptions, openPopout } from './popout.js'
 
-/// Typedefs
-/**
- * The details of a selected challenge, to be added to the the bingo board page.
- * @typedef {Object} ChallengeDataHtml
- * @property {number} difficulty The alleged difficulty of the challenge.
- * @property {string} name The name of the challenge. This is what you see on-screen.
- * @property {number} similarity The similarity of this challenge compared to the
- *                               the challenges that were chosen _at the time_ of
- *                               calculating it in `calculateChallengeSimilarity`.
- * @property {string[]} cats The category/categories this challenge belongs to.
- */
-///
-
-const capitalise = string =>
-  string
-    .split('')
-    .map((l, i) => (!i ? l.toUpperCase() : l.toLowerCase()))
-    .join('')
-
-const isInArray = (needle, haystack) => haystack.indexOf(needle) > -1
-
-/**
- * Used in calculating the similarity of a prospective challenge with already-chosen
- * ones. Frankly I think the algo is a little flawed; e.g. the first couple indices
- * here don't even get used.
- * @type {number[][]}
- */
-const LINE_CHECK_LIST = [
-  [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24],
-  [0, 2, 3, 4, 6, 11, 16, 21],
-  [0, 1, 3, 4, 7, 12, 17, 22],
-  [0, 1, 2, 4, 8, 13, 18, 23],
-  [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24],
-  [0, 10, 15, 20, 6, 7, 8, 9],
-  [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21],
-  [5, 6, 8, 9, 2, 12, 17, 22],
-  [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23],
-  [4, 14, 19, 24, 8, 7, 6, 5],
-  [0, 5, 15, 20, 11, 12, 13, 14],
-  [1, 6, 16, 21, 10, 12, 13, 14],
-  [0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14],
-  [3, 8, 18, 23, 10, 11, 12, 14],
-  [4, 9, 19, 24, 10, 11, 12, 13],
-  [0, 5, 10, 20, 16, 17, 18, 19],
-  [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4],
-  [15, 16, 18, 19, 2, 7, 12, 22],
-  [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0],
-  [4, 9, 14, 24, 15, 16, 17, 18],
-  [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24],
-  [20, 22, 23, 24, 1, 6, 11, 16],
-  [2, 7, 12, 17, 20, 21, 23, 24],
-  [20, 21, 22, 24, 3, 8, 13, 18],
-  [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4],
-]
-
-/**
- * Makes an array of size `size`, with values that are its indices. For
- * mapping/reducing/what have you.
- * @param {number} size The size of the array you desire
- * @return {number[]}
- */
-const it = size => Array(...Array(size)).map((_, i) => i)
-
-/**
- * Gets the mode and seed for the current round of bingo.
- * @returns {{
- *  seed: number,
- *  mode: string | null,
- * }}
- */
-const getDetailsForBingo = () => {
-  const searchParams = new URLSearchParams(location.search)
-  return {
-    seed: parseInt(searchParams.get('seed'), 10),
-    mode: searchParams.get('mode'),
+var bingo = function (challengePool, size) {
+  function gup(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]')
+    var regexS = '[\\?&]' + name + '=([^&#]*)'
+    var regex = new RegExp(regexS)
+    var results = regex.exec(window.location.href)
+    if (results == null) return ''
+    return results[1]
   }
-}
 
-/**
- * Calculates a horizontal shift that puts any diagonal on the main diagonal, allegedly.
- * `seed` is split into bottom and top three digits and gets a number within [0, 8] each.
- * Then we calculate to get a number in [0, 64], before... chopping things off to get
- * [0, 4] later??? Man I don't know..
- * @param {number} i Current iteration
- * @param {number} seed
- * @return {number}
- */
-const calculateHShift = (i, seed) =>
-  (i + ~~((seed % 1e3) / 120) * 8 + ~~(seed / 120e3)) % 5
+  var LANG = gup('lang')
+  if (LANG == '') LANG = 'name'
+  var SEED = gup('seed')
+  var MODE = gup('mode')
 
-/**
- * Calculates the horizontal and vertical shifts that puts any diagonal on the main
- * diagonal. Allegedly.
- */
-const calculateShifts = (i, seed) => ({
-  x: calculateHShift(i, seed),
-  y: ~~(i / 5),
-})
+  if (SEED == '') return reseedPage(MODE)
 
-/**
- * Splits the current seed into its top and bottom three digits, in that order.
- * @param {number} seed The current seed for this bingo
- * @returns {[number, number]}
- */
-const splitSeed = seed => [~~(seed / 1e3), seed % 1e3]
+  var cardtype = 'string'
 
-/**
- * Generates indices for feeding into the tables for generating the magic square. Note
- * that each element in the returned array is mathematically independent.
- * @param {number} seedSlice  A slice of the original seed. For example, we pass the top
- *                            and bottom three digits as `seedSlice` on individual calls
- *                            to this function
- * @returns {number[]}
- */
-const generateIndicesForRange = seedSlice => [
-  seedSlice % 2,
-  seedSlice % 3,
-  ~~((seedSlice % 8) / 2),
-  seedSlice % 5,
-]
+  if (MODE == 'short') {
+    cardtype = 'Short'
+  } else if (MODE == 'long') {
+    cardtype = 'Long'
+  } else {
+    cardtype = 'Normal'
+  }
 
-/**
- * Creates an array of integers [1...N-1] in a random (and uniform) order, where N is the
- * size of the passed-in array. The elements of the array are the indices that determine
- * the order of the range.
- * @param {number[]} randomisedIndexSeq
- */
-const createRandomisedRange = randomisedIndexSeq =>
-  randomisedIndexSeq.reduce(
-    (acc, rem, i) => {
-      acc.splice(rem, 0, i)
-      return acc
-    },
-    [0],
+  if (typeof size == 'undefined') size = 5
+
+  Math.seedrandom(SEED) //sets up the RNG
+  var MAX_SEED = 999999 //1 million cards
+  var results = $('#results')
+  results.append(
+    '<p>SRT Bingo <strong>v1</strong>&emsp;Seed: <strong>' +
+      SEED +
+      '</strong>&emsp;Card type: <strong>' +
+      cardtype +
+      '</strong></p>',
   )
 
-/**
- * @param {number} seed The current seed for the bingo board
- * @returns {[number[], number[]]} [`table5`, `table1`]
- */
-const createTable1Table5 = seed =>
-  splitSeed(seed).map(generateIndicesForRange).map(createRandomisedRange)
+  var noTypeCount = 0
 
-/**
- * Calculates the base difficulty for a prospective challenge. This will be a number in
- * the range [0...N-1], where N is the size of the bingo board.
- * @param {Object} shifts
- * @param {number[]} table1
- * @param {number[]} table5
- * @returns {number}
- */
-const calculateBaseDifficulty = (i, seed) => {
-  const { x, y } = calculateShifts(i, seed)
-  const [table1, table5] = createTable1Table5(seed)
-  const e5 = table5[(x + 3 * y) % 5]
-  const e1 = table1[(3 * x + y) % 5]
-  return 5 * e5 + e1
-}
+  var lineCheckList = []
 
-/**
- * @param {string} mode The mode for the current bingo; one of `{<empty>, 'short',
- *                      'long', 'special'}`
- * @param {number} baseDifficulty
- * @returns {number}
- */
-const addBiasToBaseDifficulty = (mode, baseDifficulty) => {
-  switch (mode) {
-    case 'short':
-      return Math.ceil(baseDifficulty / 2)
-    case 'long':
-    case 'special':
-      return Math.ceil((baseDifficulty + 25) / 2)
-    default:
-      return baseDifficulty + 1
+  if (size == 5) {
+    lineCheckList[0] = [1, 2, 3, 4, 5, 10, 15, 20, 6, 12, 18, 24]
+    lineCheckList[1] = [0, 2, 3, 4, 6, 11, 16, 21]
+    lineCheckList[2] = [0, 1, 3, 4, 7, 12, 17, 22]
+    lineCheckList[3] = [0, 1, 2, 4, 8, 13, 18, 23]
+    lineCheckList[4] = [0, 1, 2, 3, 8, 12, 16, 20, 9, 14, 19, 24]
+
+    lineCheckList[5] = [0, 10, 15, 20, 6, 7, 8, 9]
+    lineCheckList[6] = [0, 12, 18, 24, 5, 7, 8, 9, 1, 11, 16, 21]
+    lineCheckList[7] = [5, 6, 8, 9, 2, 12, 17, 22]
+    lineCheckList[8] = [4, 12, 16, 20, 9, 7, 6, 5, 3, 13, 18, 23]
+    lineCheckList[9] = [4, 14, 19, 24, 8, 7, 6, 5]
+
+    lineCheckList[10] = [0, 5, 15, 20, 11, 12, 13, 14]
+    lineCheckList[11] = [1, 6, 16, 21, 10, 12, 13, 14]
+    lineCheckList[12] = [
+      0, 6, 12, 18, 24, 20, 16, 8, 4, 2, 7, 17, 22, 10, 11, 13, 14,
+    ]
+    lineCheckList[13] = [3, 8, 18, 23, 10, 11, 12, 14]
+    lineCheckList[14] = [4, 9, 19, 24, 10, 11, 12, 13]
+
+    lineCheckList[15] = [0, 5, 10, 20, 16, 17, 18, 19]
+    lineCheckList[16] = [15, 17, 18, 19, 1, 6, 11, 21, 20, 12, 8, 4]
+    lineCheckList[17] = [15, 16, 18, 19, 2, 7, 12, 22]
+    lineCheckList[18] = [15, 16, 17, 19, 23, 13, 8, 3, 24, 12, 6, 0]
+    lineCheckList[19] = [4, 9, 14, 24, 15, 16, 17, 18]
+
+    lineCheckList[20] = [0, 5, 10, 15, 16, 12, 8, 4, 21, 22, 23, 24]
+    lineCheckList[21] = [20, 22, 23, 24, 1, 6, 11, 16]
+    lineCheckList[22] = [2, 7, 12, 17, 20, 21, 23, 24]
+    lineCheckList[23] = [20, 21, 22, 24, 3, 8, 13, 18]
+    lineCheckList[24] = [0, 6, 12, 18, 20, 21, 22, 23, 19, 14, 9, 4]
   }
-}
 
-/**
- * To create the magic square we need 2 random orderings of the numbers 0, 1, 2, 3, 4.
- * We create those orderings and call them `table5` and `table1`:
- * - `table5` will use the ones, tens, and hundreds digits.
- * - `table1` will use the next 3 digits.
- *
- * table5 controls the 5* part and table1 controls the 1* part.
- * The tables are set into a single magic square template
- * Some are the same up to some rotation, reflection, or row permutation.
- * However, all genuinely different magic squares can arise in this fashion.
- *
- * @param {number} i The current iteration
- * @param {string} mode The mode for the current bingo; one of `{<empty>, 'short',
- *                      'long', 'special'}`
- * @param {number} seed The seed for the current bingo
- * @returns {number}
- */
-const calculateDifficulty = (i, mode, seed) =>
-  addBiasToBaseDifficulty(mode, calculateBaseDifficulty(i, seed))
-
-/**
- * Creates an array of objects with a single property, `difficulty`. This will be used to
- * choose the challenges for the bingo.
- * @returns {{difficulty: number}}
- */
-const createDifficulties = (mode, seed) =>
-  it(25).map(i => ({
-    difficulty: calculateDifficulty(i, mode, seed),
-  }))
-
-/**
- * TODO: This isn't even being used; `selectedChallenges` only has `difficulty`, and no
- * `cats` property at all. Figure out how to fix this.
- *
- * Calculates how similar a prospective challenge is to the challenges that have been
- * selected so far. This first loops through the already-chosen challenges, at indices
- * decided by `LINE_CHECK_LIST` (??? Why tho?), then loops through the categories of the
- * prospective and incumbent challenges to compare them. A point is added if the
- * categories match, and further point is added if the match is the prospective's main
- * category, and also if it's the incumbent's main too. This means that for a category
- * that is both the prospective's and incumbent's main, we return a whopping three
- * points for that challenge.
- * @see {Challenge} for an explanation of `cats{A,B}`.
- * @param {number} index
- * @param {number[]} prospectiveCats The categories of a prospective challenge.
- * @param {ChallengeDataHtml[]} selectedChallenges
- * @returns {number}
- */
-const calculateChallengeSimilarity = (
-  index,
-  prospectiveCats,
-  selectedChallenges,
-) =>
-  prospectiveCats != null
-    ? LINE_CHECK_LIST[index].reduce((similarity, toCheckIndex) => {
-        const { cats: catsB } = selectedChallenges[toCheckIndex] || {}
-        if (catsB == null) return similarity
-        // TODO: This can be split into main and subcats. Then compare the two separately
-        prospectiveCats.forEach((a, k) => {
-          catsB.forEach((b, l) => {
-            console.log({a, b, k, l})
-            if (a == b) {
-              similarity++ // match increased
-              if (!k) similarity++ // main cat increased
-              if (!l) similarity++ // main cat increased
-            }
-          })
-        })
-        return similarity
-      }, 0)
-    : 0
-
-/**
- * Adds CSS classes to each square in the board including the headers such that, when you
- * hover over a header, the entire corresponding row gets highlighted.
- * @param {string} headerId Just the string, without the '#'. I.e. just 'row1', and **not** '#row1'
- */
-const addHighlightClassesToBingoRow = headerId => {
-  $(`#${headerId}`).hover(
-    () => $(`.${headerId}`).addClass('hover'),
-    () => $(`.${headerId}`).removeClass('hover'),
-  )
-}
-
-/**
- * @type {string[]}
- */
-const ROW_HEADER_IDS = it(5)
-  .reduce((acc, i) => acc.concat([`row${i + 1}`, `col${i + 1}`]), [])
-  .concat(['tlbr', 'bltr'])
-
-/**
- * Creates the popouts when the user clicks on the row headers.
- * @param {string} mode
- */
-const createPopoutsOnClickRowHeaders = mode => {
   $('.popout').click(function () {
-    openPopout(getPopoutOptions($(this), mode))
+    var mode = null
+    var line = $(this).attr('id')
+    var name = $(this).html()
+    var items = []
+    var cells = $('#bingo .' + line)
+    for (var i = 0; i < 5; i++) {
+      items.push(encodeURIComponent($(cells[i]).html()))
+    }
+    if (mode == 'simple-stream') {
+      window.open(
+        './bingo-popout-basic.html#' + name + '=' + items.join(';;;'),
+        '_blank',
+        'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=420, height=180',
+      )
+    } else {
+      window.open(
+        './bingo-popout.html#' + name + '=' + items.join(';;;'),
+        '_blank',
+        'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=220, height=460',
+      )
+    }
   })
-}
 
-// Make bingo squares cycle from green -> red -> blank
-const makeSquaresCycleGreenRedBlank = () => {
   $('#bingo tr td:not(.popout), #selected td').toggle(
     function () {
       $(this).addClass('greensquare')
@@ -300,114 +122,263 @@ const makeSquaresCycleGreenRedBlank = () => {
       $(this).removeClass('redsquare')
     },
   )
-}
 
-const mirror = i => i + 2 * (2 - i)
+  $('#row1').hover(
+    function () {
+      $('.row1').addClass('hover')
+    },
+    function () {
+      $('.row1').removeClass('hover')
+    },
+  )
+  $('#row2').hover(
+    function () {
+      $('.row2').addClass('hover')
+    },
+    function () {
+      $('.row2').removeClass('hover')
+    },
+  )
+  $('#row3').hover(
+    function () {
+      $('.row3').addClass('hover')
+    },
+    function () {
+      $('.row3').removeClass('hover')
+    },
+  )
+  $('#row4').hover(
+    function () {
+      $('.row4').addClass('hover')
+    },
+    function () {
+      $('.row4').removeClass('hover')
+    },
+  )
+  $('#row5').hover(
+    function () {
+      $('.row5').addClass('hover')
+    },
+    function () {
+      $('.row5').removeClass('hover')
+    },
+  )
 
-/**
- * Selects a random challenge from the pool.
- * @param {ChallengeGroup} group
- * @param {number} bias
- * @returns {Challenge}
- */
-const selectChallengeFromGroup = (group, bias) =>
-  group[(~~(group.length * Math.random()) + bias) % group.length]
+  $('#col1').hover(
+    function () {
+      $('.col1').addClass('hover')
+    },
+    function () {
+      $('.col1').removeClass('hover')
+    },
+  )
+  $('#col2').hover(
+    function () {
+      $('.col2').addClass('hover')
+    },
+    function () {
+      $('.col2').removeClass('hover')
+    },
+  )
+  $('#col3').hover(
+    function () {
+      $('.col3').addClass('hover')
+    },
+    function () {
+      $('.col3').removeClass('hover')
+    },
+  )
+  $('#col4').hover(
+    function () {
+      $('.col4').addClass('hover')
+    },
+    function () {
+      $('.col4').removeClass('hover')
+    },
+  )
+  $('#col5').hover(
+    function () {
+      $('.col5').addClass('hover')
+    },
+    function () {
+      $('.col5').removeClass('hover')
+    },
+  )
 
-/**
- * Loops through the challenges in a group and gets the one that is the least similar to
- * the challenges that have already been selected for the bingo so far.
- * @param {ChallengePool} pool
- * @param {number} i
- * @param {ChallengeDataHtml[]} incumbentChallenges
- * @param {ChallengeDataHtml}
- */
-const chooseChallengeInGroup = (pool, i, incumbentChallenges) =>
-  pool[incumbentChallenges[i].difficulty]
-    .map((_, j, group) => {
-      const prospective = selectChallengeFromGroup(group, j)
-      return {
-        ...prospective,
-        similarity: calculateChallengeSimilarity(
-          i,
-          prospective.cats,
-          incumbentChallenges,
-        ),
+  $('#tlbr').hover(
+    function () {
+      $('.tlbr').addClass('hover')
+    },
+    function () {
+      $('.tlbr').removeClass('hover')
+    },
+  )
+  $('#bltr').hover(
+    function () {
+      $('.bltr').addClass('hover')
+    },
+    function () {
+      $('.bltr').removeClass('hover')
+    },
+  )
+
+  function mirror(i) {
+    if (i == 0) {
+      i = 4
+    } else if (i == 1) {
+      i = 3
+    } else if (i == 3) {
+      i = 1
+    } else if (i == 4) {
+      i = 0
+    }
+    return i
+  }
+
+  function getDifficulty(i) {
+    // To create the magic square we need 2 random orderings of the numbers 0, 1, 2, 3, 4.
+    // The following creates those orderings and calls them Table5 and Table1
+
+    var Num3 = SEED % 1000 // Table5 will use the ones, tens, and hundreds digits.
+
+    var Rem8 = Num3 % 8
+    var Rem4 = Math.floor(Rem8 / 2)
+    var Rem2 = Rem8 % 2
+    var Rem5 = Num3 % 5
+    var Rem3 = Num3 % 3 // Note that Rem2, Rem3, Rem4, and Rem5 are mathematically independent.
+    var RemT = Math.floor(Num3 / 120) // This is between 0 and 8
+
+    // The idea is to begin with an array containing a single number, 0.
+    // Each number 1 through 4 is added in a random spot in the array's current size.
+    // The result - the numbers 0 to 4 are in the array in a random (and uniform) order.
+    var Table5 = [0]
+    Table5.splice(Rem2, 0, 1)
+    Table5.splice(Rem3, 0, 2)
+    Table5.splice(Rem4, 0, 3)
+    Table5.splice(Rem5, 0, 4)
+
+    Num3 = Math.floor(SEED / 1000) // Table1 will use the next 3 digits.
+    Num3 = Num3 % 1000
+
+    Rem8 = Num3 % 8
+    Rem4 = Math.floor(Rem8 / 2)
+    Rem2 = Rem8 % 2
+    Rem5 = Num3 % 5
+    Rem3 = Num3 % 3
+    RemT = RemT * 8 + Math.floor(Num3 / 120) // This is between 0 and 64.
+
+    var Table1 = [0]
+    Table1.splice(Rem2, 0, 1)
+    Table1.splice(Rem3, 0, 2)
+    Table1.splice(Rem4, 0, 3)
+    Table1.splice(Rem5, 0, 4)
+
+    i--
+    RemT = RemT % 5 //  Between 0 and 4, fairly uniformly.
+    const x = (i + RemT) % 5 //  RemT is horizontal shift to put any diagonal on the main diagonal.
+    const y = Math.floor(i / 5)
+
+    // The Tables are set into a single magic square template
+    // Some are the same up to some rotation, reflection, or row permutation.
+    // However, all genuinely different magic squares can arise in this fashion.
+    var e5 = Table5[(x + 3 * y) % 5]
+    var e1 = Table1[(3 * x + y) % 5]
+
+    // Table5 controls the 5* part and Table1 controls the 1* part.
+    let value = 5 * e5 + e1
+
+    if (MODE == 'short') {
+      value = Math.floor(value / 2)
+    } // if short mode, limit difficulty
+    else if (MODE == 'long') {
+      value = Math.floor((value + 25) / 2)
+    } else if (MODE == 'special') {
+      value = Math.floor((value + 25) / 2)
+    }
+    value++
+    return value
+  }
+
+  function calculateSimilarity(i, typesA) {
+    var synergy = 0
+    if (typeof typesA != 'undefined') {
+      for (var j = 0; j < lineCheckList[i].length; j++) {
+        var typesB = bingoBoard[lineCheckList[i][j]].types
+        if (typeof typesB != 'undefined') {
+          for (var k = 0; k < typesA.length; k++) {
+            for (var l = 0; l < typesB.length; l++) {
+              if (typesA[k] == typesB[l]) {
+                synergy++ // if match increase
+                if (k == 0) {
+                  synergy++
+                } // if main type increase
+                if (l == 0) {
+                  synergy++
+                } // if main type increase
+              }
+            }
+          }
+        }
       }
-    })
-    .reduce(
-      (acc, prospective) =>
-        acc == null || prospective.similarity < acc.similarity
-          ? prospective
-          : acc,
-      null,
-    )
+    }
+    return synergy
+  }
 
-/**
- * Chooses the challenges for the bingo.
- * @param {ChallengePool} pool
- * @param {string} mode
- * @param {number} seed
- * @returns {ChallengeDataHtml[]}
- */
-const chooseChallenges = (pool, mode, seed) =>
-  createDifficulties(mode, seed).map((_, i, arr) =>
-    chooseChallengeInGroup(pool, i, arr),
-  )
+  var bingoBoard = [] //the board itself stored as an array first
+  for (let i = 0; i < 25; i++) {
+    // array with objects that store the difficulty in order 0-24
+    bingoBoard[i] = { difficulty: getDifficulty(i) }
+  }
 
-/**
- * Adds the chosen challenges onto the bingo board.
- * @param {ChallengeDataHtml[]} chosenChallenges The challenges chosen based on the seed
- */
-const populateBingoBoardOnPage = chosenChallenges => {
-  chosenChallenges.forEach((c, i) => {
-    // $(`#slot${i + 1}`).append(c.name)
-    $(`#slot${i}`).append(`<br/>${c.cats.toString()}`)
-    $(`#slot${i}`).append(`<br/>${c.similarity}`)
+  const minimiseSimilarity = (challengePool, difficulty, RNG) => {
+    let synergy = 0
+    let currentObj = null
+    let minSynObj = null
+
+    for (let i = 0; i < challengePool[difficulty].length; i++) {
+      currentObj =
+        challengePool[difficulty][(i + RNG) % challengePool[difficulty].length]
+      synergy = calculateSimilarity(i, currentObj.types)
+      if (minSynObj == null || synergy < minSynObj.synergy) {
+        if (minSynObj != null) {
+          console.table({
+            currentSynergy: minSynObj.synergy,
+            lowerSynergy: synergy,
+          })
+        }
+        minSynObj = { synergy, value: currentObj }
+      }
+      if (!synergy) {
+        break
+      }
+    }
+
+    return minSynObj
+  }
+
+  //populate the bingo board in the array
+  bingoBoard.forEach((_, i, board) => {
+    var getDifficulty = board[i].difficulty // difficulty of current square
+    var RNG = Math.floor(challengePool[getDifficulty].length * Math.random())
+    if (RNG == challengePool[getDifficulty].length) {
+      RNG--
+    } //fix a miracle
+
+    const minSynObj = minimiseSimilarity(challengePool, getDifficulty, RNG)
+
+    board[i].types = minSynObj.value.types
+    board[i].name = minSynObj.value[LANG] || minSynObj.value.name
+    board[i].synergy = minSynObj.synergy
+    $('#slot' + (i + 1)).append(bingoBoard[i].name)
   })
-}
-
-/**
- * Writes the details of the current bingo at the bottom of the board on the page.
- * @param {string} mode
- * @param {number} seed
- */
-const writeFooter = (mode, seed) => {
-  $('#results').append(
-    '<p>SRT Bingo <strong>v1</strong>&emsp;Seed: <strong>' +
-      seed +
-      '</strong>&emsp;Card type: <strong>' +
-      capitalise(mode || 'normal') +
-      '</strong></p>',
-  )
-}
-
-/**
- * Creates the bingo. This is the "main" function that starts it all.
- * @param {ChallengePool} challengePool
- */
-const bingo = challengePool => {
-  const { seed, mode = 'normal' } = getDetailsForBingo()
-
-  if (isNaN(seed)) return reseedPage(mode)
-
-  Math.seedrandom(seed.toString()) // sets up the RNG. `seed` needs to be a string
-
-  writeFooter(mode, seed)
-  createPopoutsOnClickRowHeaders(mode)
-  makeSquaresCycleGreenRedBlank()
-  ROW_HEADER_IDS.map(addHighlightClassesToBingoRow)
-  populateBingoBoardOnPage(chooseChallenges(challengePool, mode, seed))
 
   return true
-}
+} // setup
 
-/**
- * @param {string} mode
- */
-const reseedPage = mode => {
-  const qSeed = '?seed=' + ~~(1e6 * Math.random())
-  const qMode = isInArray(mode, ['short', 'long']) ? '&mode=' + mode : ''
-  location = qSeed + qMode
+function reseedPage(mode) {
+  var qSeed = '?seed=' + Math.ceil(999999 * Math.random())
+  var qMode = mode == 'short' || mode == 'long' ? '&mode=' + mode : ''
+  window.location = qSeed + qMode
   return false
 }
 
