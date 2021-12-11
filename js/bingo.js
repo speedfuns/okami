@@ -16,7 +16,7 @@ import { getPopoutOptions, openPopout } from './popout.js'
  * @typedef {Object} SelectedChallenge
  * @property {number} difficulty
  * @property {string} name
- * @property {string[]} types
+ * @property {string[]} cats
  */
 
 /**
@@ -26,7 +26,7 @@ import { getPopoutOptions, openPopout } from './popout.js'
  * @property {number} difficulty
  * @property {string} name
  * @property {number} similarity
- * @property {string[]} types
+ * @property {string[]} cats
  */
 
 /**
@@ -87,18 +87,6 @@ const lineCheckList = [
 ]
 
 /**
- * Adds jQuery magic to the row/column headers on the board (e.g. "ROW1") such that when
- * you hover over one, its corresponding row/column cells get highlighted.
- */
-const addHoverJqueryToHeaders = () => {
-  arr(5)
-    .map(i => `row${i}`)
-    .concat(arr(5).map(i => `col${i}`))
-    .concat(['tlbr', 'bltr'])
-    .map(addHighlightCellsOnHoverHeader)
-}
-
-/**
  * Adds jQuery magic to a row/column header so that on hovering over one, the entire row/
  * column will be highlighted.
  *
@@ -118,6 +106,18 @@ const addHighlightCellsOnHoverHeader = tag => {
       $(`.${tag}`).removeClass('hover')
     },
   )
+}
+
+/**
+ * Adds jQuery magic to the row/column headers on the board (e.g. "ROW1") such that when
+ * you hover over one, its corresponding row/column cells get highlighted.
+ */
+const addHighlightCellsOnHoverHeaders = () => {
+  arr(5)
+    .map(i => `row${i}`)
+    .concat(arr(5).map(i => `col${i}`))
+    .concat(['tlbr', 'bltr'])
+    .map(addHighlightCellsOnHoverHeader)
 }
 
 /**
@@ -232,7 +232,7 @@ const guptill = (name, defaultVal = '') =>
 /**
  * Main function of this file. Selects the challenges to populate the board with, based
  * on a given seed, while minimising similarity of challenges based on a Challenge
- * object's `types` property.
+ * object's `cats` property.
  * @see Challenge
  * @param {ChallengePool} challengePool The data source.
  * @returns {boolean} Don't think we actually need to return a value tbh. Could be wrong
@@ -256,7 +256,7 @@ const bingo = challengePool => {
   // Add jQuery manip stuff to the board
   addOpenPopoutOnClickHeader()
   addCycleChallengeStateOnClickCells()
-  addHighlightCellsOnHoverHeader()
+  addHighlightCellsOnHoverHeaders()
 
   // The board itself first stored as an array with objects that store the difficulty in
   // order 0-24
@@ -281,20 +281,20 @@ const bingo = challengePool => {
 
 /**
  * @param {number} i
- * @param {string[]} typesA
+ * @param {string[]} catsA
  * @param {SelectedChallenge[]} selectedChallenges
  * @param {number[][]} lineCheckList
  * @returns {number}
  */
-const calculateSimilarity = (i, typesA, selectedChallenges, lineCheckList) => {
+const calculateSimilarity = (i, catsA, selectedChallenges, lineCheckList) => {
   let similarity = 0
-  if (typesA != null) {
+  if (catsA != null) {
     for (let j = 0; j < lineCheckList[i].length; j++) {
-      let typesB = selectedChallenges[lineCheckList[i][j]].types
-      if (typesB != null) {
-        for (let k = 0; k < typesA.length; k++) {
-          for (let l = 0; l < typesB.length; l++) {
-            if (typesA[k] == typesB[l]) {
+      let catsB = selectedChallenges[lineCheckList[i][j]].cats
+      if (catsB != null) {
+        for (let k = 0; k < catsA.length; k++) {
+          for (let l = 0; l < catsB.length; l++) {
+            if (catsA[k] == catsB[l]) {
               similarity++ // if match increase
               if (k == 0) {
                 similarity++
@@ -345,7 +345,7 @@ const initSelectedChallenges = (mode, seed, size = 5) =>
  *                                   `calculateSimilarity`. But it's there.
  * @returns {SelectedChallengeWithSimilarity}
  */
-const minimiseSimilarity = (
+const selectNextChallenge = (
   challengeGroup,
   rng,
   selectedChallenges,
@@ -353,15 +353,15 @@ const minimiseSimilarity = (
 ) =>
   // Loop break taken from https://stackoverflow.com/questions/36144406/how-to-early-break-reduce-method/47441371#47441371
   challengeGroup.reduce((acc, _, i, group) => {
-    const { name, types } = group[(i + rng) % group.length]
+    const { name, cats } = group[(i + rng) % group.length]
     const similarity = calculateSimilarity(
       i,
-      types,
+      cats,
       selectedChallenges,
       lineCheckList,
     )
     if (acc == null || similarity < acc.similarity) {
-      acc = { name, similarity, types }
+      acc = { name, similarity, cats }
     }
     if (!similarity) {
       group.splice(1)
@@ -378,8 +378,10 @@ const minimiseSimilarity = (
  * @returns {SelectedChallenge[]} The array of selected challenges to populate the board
  */
 const getChallenges = (difficulties, challengePool, lineCheckList) =>
+  // We're not actually reducing the array here. Rather, we're reusing it to populate
+  // itself with `name` and `cats`, as per the algo's design.
   difficulties.reduce((acc, { difficulty }, i) => {
-    const { name, types } = minimiseSimilarity(
+    const { name, cats } = selectNextChallenge(
       challengePool[difficulty],
       getRng(challengePool[difficulty]),
       acc,
@@ -387,7 +389,7 @@ const getChallenges = (difficulties, challengePool, lineCheckList) =>
     )
 
     acc[i].name = name
-    acc[i].types = types
+    acc[i].cats = cats
 
     return acc
   }, difficulties.slice(0))
