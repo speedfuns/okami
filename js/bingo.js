@@ -88,6 +88,21 @@ const lineCheckList = [
 ]
 
 /**
+ * Adds info to the bottom of the bingo board.
+ * @param {string} seed The stringified RNG seed
+ * @param {string} mode The current game mode. One of {Normal,Short,Long,Special}
+ */
+const addBingoFooter = (seed, mode) => {
+  $('#results').append(
+    '<p>SRT Bingo <strong>v1</strong>&emsp;Seed: <strong>' +
+      seed +
+      '</strong>&emsp;Card type: <strong>' +
+      mode +
+      '</strong></p>',
+  )
+}
+
+/**
  * Adds jQuery magic to a row/column header so that on hovering over one, the entire row/
  * column will be highlighted.
  *
@@ -395,15 +410,9 @@ const bingo = challengePool => {
   if (seed == '') return reseedPage(mode)
 
   Math.seedrandom(seed) //sets up the RNG
-  $('#results').append(
-    '<p>SRT Bingo <strong>v1</strong>&emsp;Seed: <strong>' +
-      seed +
-      '</strong>&emsp;Card type: <strong>' +
-      mode +
-      '</strong></p>',
-  )
 
   // Add jQuery manip stuff to the board
+  addBingoFooter(seed, mode)
   addOpenPopoutOnClickHeader()
   addCycleChallengeStateOnClickCells()
   addHighlightCellsOnHoverHeaders()
@@ -424,7 +433,7 @@ const bingo = challengePool => {
 
 /**
  * Reloads the page with a new seed.
- * @param {string} mode The game mode. One of {Short,Normal,Long,Special}. Unused.
+ * @param {string} mode The game mode. One of {Short,Normal,Long,Special}.
  */
 const reseedPage = (mode = 'Normal') => {
   window.location =
