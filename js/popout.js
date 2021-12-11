@@ -1,9 +1,17 @@
-// This file houses the code to create the popouts for the bingo board.
-// On clicking the headers of a row (the ones that say e.g. "ROW1"), a popout will
-// appear, containing only the challenges listed for that row.
-// The challenge cells themselves still work like they do in the main page; you can
-// cycle through its Done, Failed, and Default stages by clicking on them.
-
+/**
+ * This file houses the code to create the popouts for the bingo board.
+ * On clicking the headers of a row (the ones that say e.g. "ROW1"), a popout will
+ * appear, containing only the challenges listed for that row.
+ * The challenge cells themselves still work like they do in the main page; you can
+ * cycle through its Done, Failed, and Default stages by clicking on them.
+ *
+ * Example use:
+ * ```js
+ * $('.popout').click(function() {
+ *    openPopout(getPopoutOptions($(this)[, 'simple-stream']))
+ * })
+ * ```
+ */
 
 /// Typedefs
 /**
@@ -38,6 +46,11 @@ const popoutStaticDefaultOpts = {
   height: 460,
 }
 
+/**
+ * Options for the popout based on the current bingo's mode, used to set the popout's
+ * markup and dimensions. Currently holds a single 'simple-stream' option, and it's also
+ * not actually used.
+ */
 const popoutStaticOpts = {
   'simple-stream': {
     html: './bingo-popout-basic.html',
@@ -58,10 +71,10 @@ const popoutStaticOpts = {
  * @see popoutStaticOpts
  * @see stringifyRowForPopout
  * @param {Object} rowHeaderEl This needs to be a jQuery wrapper
- * @param {string} mode
+ * @param {string | null} mode Used as a key to `popoutStaticOpts`. Currently unused.
  * @returns {PopoutOptions}
  */
-export const getPopoutOptions = (rowHeaderEl, mode) => ({
+export const getPopoutOptions = (rowHeaderEl, mode = null) => ({
   name: rowHeaderEl.html(),
   items: stringifyRowForPopout(rowHeaderEl.attr('id')),
   ...(popoutStaticOpts[mode] || popoutStaticDefaultOpts),
@@ -69,13 +82,13 @@ export const getPopoutOptions = (rowHeaderEl, mode) => ({
 
 /**
  * Opens a popout of a single row from the bingo board.
- * @param {PopoutOptions} opt
+ * @param {PopoutOptions} opts
  */
- export const openPopout = opt => {
+ export const openPopout = opts => {
   open(
-    `${opt.html}#${opt.name}=${opt.items}`,
+    `${opts.html}#${opts.name}=${opts.items}`,
     '_blank',
     // A ton of these options default to "no" or don't exist in the MDN docs. I'm not sure if the same defaults are true in other browsers too; can't care about that right now.
-    `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${opt.width}, height=${opt.height}`,
+    `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${opts.width}, height=${opts.height}`,
   )
 }

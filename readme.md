@@ -28,8 +28,7 @@ This is about 90% done; I just need to do what's in, well, [To Do](#to-do).
 ## To Do
 
 - Read through the CSS files to understand their places in life
-- Fix `calculateChallengeSimilarity` cuz that shit ain't actually being utilised at all
-- Fix issue where a cell can be empty
+- Read [this](https://dev.to/dcodeyt/send-data-between-tabs-with-javascript-2oa) to learn how to update a cell in both a popout and in the main board page (they're both the same origin so this _can_ work)
 
 ## Resources
 
