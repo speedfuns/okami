@@ -52,7 +52,8 @@ const mirror = (i, size = 5) => i + 2 * (~~(size / 2) - i)
 const arr = size => Array(...Array(size)).map((_, i) => i)
 
 /**
- * I really don't know how this works. It's just part of the `calculateSimilarity` magic.
+ * Used in `calculateSimilarity`. Please read that function's docs to understand how this
+ * is used.
  * @see calculateSimilarity
  */
 const lineCheckList = [
@@ -154,7 +155,6 @@ const addCycleChallengeStateOnClickCells = () => {
  * Calculates the... difficulty of a challenge?
  * @param {number} i The current iteration
  * @param {string} mode The current game mode. It's one of {Short,Normal,Long,Special}.
- *                      But honestly this isn't used.
  * @param {string} seed The current game seed. It's stringified because of the seeding
  *                      library.
  */
@@ -230,6 +230,156 @@ const guptill = (name, defaultVal = '') =>
   new URLSearchParams(location.search).get(name) || defaultVal
 
 /**
+ * Calculates a prospective challenge's similarity to what's been chosen so far.
+ *
+ * Loops through `lineChecklist` to get a magical number, which is then used as an index
+ * to get the categories of a particular challenge from the array of challenges that
+ * have been chosen so far. The categories are then compared with the prospective
+ * challenge's cats. The more matches between the two arrays, the higher the score. And
+ * we want the lowest score possible.
+ * @param {number} i The index of the currently-looked-at Challenge in the currently-
+ *                   looked-at ChallengeGroup
+ * @param {string[]} prospectiveCats The categories of the currently-looked-at Challenge
+ * @param {SelectedChallenge[]} selectedChallenges The list of challenges chosen so far
+ * @param {number[][]} lineCheckList A magical list of numbers to get a particular
+ *                                   challenge from `selectedChallenges`
+ * @returns {number}
+ */
+const calculateSimilarity = (
+  i,
+  prospectiveCats,
+  selectedChallenges,
+  lineCheckList,
+) => {
+  let similarity = 0
+  if (prospectiveCats != null) {
+    for (let j = 0; j < lineCheckList[i].length; j++) {
+      const { cats: catsB } = selectedChallenges[lineCheckList[i][j]]
+      if (catsB != null) {
+        for (let k = 0; k < prospectiveCats.length; k++) {
+          for (let l = 0; l < catsB.length; l++) {
+            if (prospectiveCats[k] == catsB[l]) {
+              similarity++ // if match, increase
+              if (k == 0) {
+                similarity++
+              } // if main type, increase
+              if (l == 0) {
+                similarity++
+              } // if main type, increase
+            }
+          }
+        }
+      }
+    }
+  }
+  return similarity
+}
+
+/**
+ * Get a random number as a bias for `selectNextChallenge`.
+ * Location of this call affects its result. Like yes, even if you call this as a
+ * parameter, or assign it first to a const before passing _that_ in, the value's
+ * different.
+ * @see {selectNextChallenge}
+ * @param {ChallengeGroup} challengeGroup
+ * @returns {number}
+ */
+const getStartIndex = challengeGroup =>
+  ~~(challengeGroup.length * Math.random())
+
+/**
+ * Inits the array of selected challenges that will be used to populate the bingo board.
+ * This will be an array of objects with a single property `difficulty`.
+ * @param {string} mode The game mode
+ * @param {string} seed The stringified game seed
+ * @param {number} size The size of the bingo board. The board will be `size` x `size`.
+ *                      Defaults to 5.
+ * @returns {Object[]}
+ */
+const initSelectedChallenges = (mode, seed, size = 5) =>
+  arr(size ** 2).map(i => ({
+    difficulty: getDifficulty(i, mode, seed),
+  }))
+
+/**
+ * Choose the next challenge to be added to the board.
+ *
+ * This loops through `challengeGroup`, starting from index `startIndex` instead of
+ * simply 0, wrapping back around if needed. From there, we calculate the similarity of
+ * each challenge to what's been chosen so far. The one with the lowest score is returned
+ * to be selected.
+ *
+ * @see {getChallenges}
+ * @param {ChallengeGroup} challengeGroup The group used to select the next challenge
+ * @param {number} startIndex A bias to start selecting challenges in the group, instead
+ *                            of simply starting from `challengeGroup[0]`
+ * @param {Object[]} selectedChallenges The list of selected challenges so far. It is
+ *                                      used in `calculateSimilarity` to decide which
+ *                                      challenge in `challengeGroup` should be chosen
+ * @param {number[][]} lineCheckList Really don't know how this is used as part of
+ *                                   `calculateSimilarity`. But it's there.
+ * @returns {SelectedChallengeWithSimilarity} The challenge with the lowest similarity
+ *                                            score to `selectedChallenges`
+ */
+const selectNextChallenge = (
+  challengeGroup,
+  startIndex,
+  selectedChallenges,
+  lineCheckList,
+) =>
+  // Loop break taken from https://stackoverflow.com/questions/36144406/how-to-early-break-reduce-method/47441371#47441371
+  challengeGroup.reduce((acc, _, i, group) => {
+    const { name, cats } = group[(i + startIndex) % group.length]
+    const similarity = calculateSimilarity(
+      i,
+      cats,
+      selectedChallenges,
+      lineCheckList,
+    )
+    if (acc == null || similarity < acc.similarity) {
+      acc = { name, similarity, cats }
+    }
+    if (!similarity) {
+      group.splice(1)
+    }
+    return acc
+  }, null)
+
+/**
+ * Select challenges from the challenge pool, defined in `tables/generic.js`.
+ * @param {SelectedChallengeInit[]} difficulties
+ * @param {ChallengePool} challengePool The challenges to choose from
+ * @param {number[][]} lineChecklist 2D array of magical numbers. Read
+ *                                   `calculateSimilarity`'s docs for more info
+ * @returns {SelectedChallenge[]} The array of selected challenges to populate the board
+ */
+const getChallenges = (difficulties, challengePool, lineCheckList) =>
+  // We're not actually reducing the array here. Rather, we're reusing it to populate
+  // itself with `name` and `cats`, as per the algo's design.
+  difficulties.reduce((acc, { difficulty }, i) => {
+    const { name, cats } = selectNextChallenge(
+      challengePool[difficulty],
+      getStartIndex(challengePool[difficulty]),
+      acc,
+      lineCheckList,
+    )
+
+    acc[i].name = name
+    acc[i].cats = cats
+
+    return acc
+  }, difficulties.slice(0))
+
+/**
+ * Prints the selected challenges on the bingo board. The final step of everything.
+ * @param {SelectedChallenge[]} challenges
+ */
+const printChallengesOnBoard = challenges =>
+  challenges.forEach(({ name }, i) => {
+    $('#slot' + (i + 1)).append(name)
+  })
+
+/**
  * Main function of this file. Selects the challenges to populate the board with, based
  * on a given seed, while minimising similarity of challenges based on a Challenge
  * object's `cats` property.
@@ -258,16 +408,9 @@ const bingo = challengePool => {
   addCycleChallengeStateOnClickCells()
   addHighlightCellsOnHoverHeaders()
 
-  // The board itself first stored as an array with objects that store the difficulty in
-  // order 0-24
-
-  /**
-   * Location of getRng call affects its result. Like yes, even if you call this as a
-   * parameter, or assign it first to a constiable before passing _that_ in, the value's
-   * different.
-   */
-
-  //populate the bingo board in the array
+  // Populate the bingo board in the array
+  // The board itself is first stored as an array with objects that store the difficulty
+  // in order 0-24
   printChallengesOnBoard(
     getChallenges(
       initSelectedChallenges(mode, seed),
@@ -278,130 +421,6 @@ const bingo = challengePool => {
 
   return true
 } // setup
-
-/**
- * @param {number} i
- * @param {string[]} catsA
- * @param {SelectedChallenge[]} selectedChallenges
- * @param {number[][]} lineCheckList
- * @returns {number}
- */
-const calculateSimilarity = (i, catsA, selectedChallenges, lineCheckList) => {
-  let similarity = 0
-  if (catsA != null) {
-    for (let j = 0; j < lineCheckList[i].length; j++) {
-      let catsB = selectedChallenges[lineCheckList[i][j]].cats
-      if (catsB != null) {
-        for (let k = 0; k < catsA.length; k++) {
-          for (let l = 0; l < catsB.length; l++) {
-            if (catsA[k] == catsB[l]) {
-              similarity++ // if match increase
-              if (k == 0) {
-                similarity++
-              } // if main type increase
-              if (l == 0) {
-                similarity++
-              } // if main type increase
-            }
-          }
-        }
-      }
-    }
-  }
-  return similarity
-}
-
-/**
- * Get a random number as a bias when choosing a challenge group.
- * @param {ChallengeGroup} challengeGroup
- * @returns {number}
- */
-const getRng = challengeGroup => ~~(challengeGroup.length * Math.random())
-
-/**
- * Inits the array of selected challenges that will be used to populate the bingo board.
- * This will be an array of objects with a single property `difficulty`.
- * @param {string} mode The game mode
- * @param {string} seed The stringified game seed
- * @param {number} size The size of the bingo board. The board will be `size` x `size`.
- *                      Defaults to 5.
- * @returns {Object[]}
- */
-const initSelectedChallenges = (mode, seed, size = 5) =>
-  arr(size ** 2).map(i => ({
-    difficulty: getDifficulty(i, mode, seed),
-  }))
-
-/**
- * This algo loops through `difficulties` and uses its entire self to calculate what its
- * currently-looked-at element should become.
- * @param {ChallengeGroup} challengeGroup
- * @param {number} rng An index bias to start selecting challenges in the group, instead
- *                     of simply starting from `challengeGroup[0]`
- * @param {Object[]} selectedChallenges The list of selected challenges so far. It is
- *                                      used in `calculateSimilarity` to decide which
- *                                      challenge in `challengeGroup` should be chosen
- * @param {number[][]} lineCheckList Really don't know how this is used as part of
- *                                   `calculateSimilarity`. But it's there.
- * @returns {SelectedChallengeWithSimilarity}
- */
-const selectNextChallenge = (
-  challengeGroup,
-  rng,
-  selectedChallenges,
-  lineCheckList,
-) =>
-  // Loop break taken from https://stackoverflow.com/questions/36144406/how-to-early-break-reduce-method/47441371#47441371
-  challengeGroup.reduce((acc, _, i, group) => {
-    const { name, cats } = group[(i + rng) % group.length]
-    const similarity = calculateSimilarity(
-      i,
-      cats,
-      selectedChallenges,
-      lineCheckList,
-    )
-    if (acc == null || similarity < acc.similarity) {
-      acc = { name, similarity, cats }
-    }
-    if (!similarity) {
-      group.splice(1)
-    }
-    return acc
-  }, null)
-
-/**
- * Select challenges from the challenge pool, defined in `tables/generic.js`.
- * @param {SelectedChallengeInit[]} difficulties
- * @param {ChallengePool} challengePool The challenges to choose from
- * @param {number[][]} lineChecklist This is part of `minimiseSimilarity`. God knows how
- *                                   that algo works.
- * @returns {SelectedChallenge[]} The array of selected challenges to populate the board
- */
-const getChallenges = (difficulties, challengePool, lineCheckList) =>
-  // We're not actually reducing the array here. Rather, we're reusing it to populate
-  // itself with `name` and `cats`, as per the algo's design.
-  difficulties.reduce((acc, { difficulty }, i) => {
-    const { name, cats } = selectNextChallenge(
-      challengePool[difficulty],
-      getRng(challengePool[difficulty]),
-      acc,
-      lineCheckList,
-    )
-
-    acc[i].name = name
-    acc[i].cats = cats
-
-    return acc
-  }, difficulties.slice(0))
-
-/**
- * Prints the selected challenges on the bingo board. The final step of everything.
- * @param {SelectedChallenge[]} challenges
- */
-const printChallengesOnBoard = challenges =>
-  challenges.forEach(({ name }, i) => {
-    $('#slot' + (i + 1)).append(name)
-  })
 
 /**
  * Reloads the page with a new seed.
