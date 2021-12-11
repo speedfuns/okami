@@ -12,34 +12,6 @@ body {
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
 }
 
-header {
-  -moz-box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  -webkit-box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  background: url(http://c15111086.r86.cf2.rackcdn.com/texture_bar2.jpg) top
-    center;
-  border-bottom: 1px #424242 dotted;
-  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  padding-top: 8px;
-}
-
-footer {
-  -moz-box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  -webkit-box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  background: url(http://c15111086.r86.cf2.rackcdn.com/texture_bar_footer2.jpg)
-    top center;
-  border-top: 1px #424242 dotted;
-  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
-  clear: both;
-  color: gray;
-  font-size: 85%;
-  height: 28px;
-  line-height: 85%;
-  margin-top: -29px;
-  position: relative;
-  text-align: center;
-  width: 100%;
-}
-
 strong {
   color: #f7e279;
   font-weight: 700;
