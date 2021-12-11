@@ -1,3 +1,5 @@
+import { getPopoutOptions, openPopout } from './popout.js'
+
 // This file is used for building the bingo board. We assume a size of five here.
 // It fills the HTML with the challenge names, and also gives the ability to cycle
 // through a challenge cell's Done, Failed, and Default stages by clicking on it.
@@ -34,8 +36,6 @@
  * @property {number} difficulty
  */
 ///
-
-import { getPopoutOptions, openPopout } from './popout.js'
 
 /**
  * Unused. Mirrors a value along a number line. Assumes i >= 0.
@@ -414,5 +414,12 @@ const reseedPage = (mode = 'Normal') => {
     }).toString()
   return false
 }
+
+// Adds `reseedPage` to be the on-click handler for the sort buttons on the bingo page.
+$.map($('.sortButton'), function (el) {
+  $(el).click(() => {
+    reseedPage($(el).data('type'))
+  })
+})
 
 export default bingo
