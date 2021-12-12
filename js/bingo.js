@@ -156,14 +156,13 @@ const printChallengesOnBoard = challenges =>
  */
 const bingo = challengePool => {
   const seed = guptill('seed')
-  const mode = guptill('mode', 'Normal')
 
-  if (seed == '') return reseedPage(mode)
+  if (seed == '') return reseedPage()
 
   Math.seedrandom(seed) //sets up the RNG
 
   // Add jQuery manip stuff to the board
-  addBingoFooter(seed, mode)
+  addBingoFooter(seed)
   addOpenPopoutOnClickHeader()
   addCycleChallengeStateOnClickCells()
   addHighlightCellsOnHoverHeaders()
@@ -178,14 +177,12 @@ const bingo = challengePool => {
 
 /**
  * Reloads the page with a new seed.
- * @param {string} mode The game mode. One of {Short,Normal,Long,Special}.
  */
-const reseedPage = (mode = 'Normal') => {
+const reseedPage = () => {
   window.location =
     '?' +
     new URLSearchParams({
       seed: Math.ceil(999999 * Math.random()),
-      mode,
     }).toString()
   return false
 }
