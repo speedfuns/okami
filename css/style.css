@@ -87,6 +87,7 @@ ul li {
   -moz-user-select: none;
   -o-user-select: none;
   -webkit-user-select: none;
+  user-select: none;
 }
 
 table {
@@ -199,6 +200,7 @@ main #bingo {
   -moz-user-select: none;
   -o-user-select: none;
   -webkit-user-select: none;
+  user-select: none;
   margin-top: 16px;
 }
 
@@ -299,6 +301,7 @@ main #about_bingo {
 #ajaxspin {
   -moz-animation: spin 1s linear infinite;
   -webkit-animation: spin 1s linear infinite;
+  animation: spin 1s linear infinite;
   border-color: #212121 #865934 #858b93 #c6b561;
   border-radius: 40px;
   border-style: dotted;
@@ -311,6 +314,7 @@ main #about_bingo {
 #ajaxloading {
   -moz-animation: bounce 1.5s linear infinite;
   -webkit-animation: bounce 1.5s linear infinite;
+  animation: spin 1s linear infinite;
   color: gray;
   font-size: 85%;
   font-weight: 700;
@@ -358,31 +362,6 @@ main #about_bingo {
   margin: auto;
 }
 
-#sortButtons {
-  overflow: visible;
-}
-
-.sortButton {
-  cursor: pointer;
-  font-weight: bold;
-  text-shadow: black 1px 1px 1px;
-  color: white;
-  margin-left: 6px;
-  margin-right: 2px;
-  text-decoration: none;
-  padding: 4px 18px;
-  text-align: center;
-  -moz-border-radius: 15px;
-  border-radius: 15px;
-  border-left: 2px solid #2339a4;
-  border-right: 2px solid #1a2a88;
-  border-top: 2px solid #244ca6;
-  border-bottom: 2px solid #192686;
-  background-color: #1e3294;
-  background: -moz-linear-gradient(top, #2045c0 0%, #1e3294 100%);
-  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#2045c0', endColorstr='#1e3294',GradientType=0 );
-}
-
 .note {
   color: gray;
   font-style: italic;
@@ -390,4 +369,16 @@ main #about_bingo {
   display: block;
   padding-top: 3px;
   padding-bottom: 3px;
+}
+
+body[data-loading="true"] main {
+  display: none;
+}
+
+body[data-loading="false"] #loading-message {
+  display: none;
+}
+
+body[data-in-development="true"] {
+  background: #311;
 }

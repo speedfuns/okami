@@ -12,9 +12,38 @@
     <!-- Scripts -->
     <script src="./js/jquery.min.js"></script>
     <script src="./js/seedrandom-min.js" type="text/javascript"></script>
+
+    <script>
+      if (new URLSearchParams(location.search).get('seed') === null) {
+        const seed = Math.ceil(999999 * Math.random());
+        const params = new URLSearchParams({ seed }).toString()
+        window.location = `?${params}`;
+      }
+      (()=>{
+        const listeners = [];
+        let isLoaded = false;
+        window.onGoogleSheetsAPILoaded = (...addListeners) => {
+          if (isLoaded) {
+            addListeners.forEach(listener => listener());
+            return;
+          }
+          listeners.push(...addListeners)
+        };
+        window.fireGoogleSheetsAPILoaded = () => {
+          isLoaded = true;
+          listeners.forEach(listener => listener());
+        }
+      })();
+    </script>
+
+    <script async defer src="https://apis.google.com/js/api.js" onload="fireGoogleSheetsAPILoaded()"></script>
+    <!-- <script async defer src="https://accounts.google.com/gsi/client" onload="fireGSILoaded()"></script> -->
   </head>
 
-  <body>
+  <body data-loading="true">
+    <div id="loading-message">
+      Loading data...
+    </div>
     <main>
       <div id="about_bingo">
         <h2 style="margin-top: 35px; padding-top: 0px">Okami Bingo Rules</h2>
